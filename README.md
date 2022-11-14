@@ -85,6 +85,7 @@ This implementation was simplified from the original DSSP algorithm. The differe
 Although the above simplifications, the C3 type annotation still matches with the original DSSP for more than 97% of residues on average.
 
 ## Reference
+``` bibtex
 @article{kabsch1983dictionary,
   title={Dictionary of protein secondary structure: pattern recognition of hydrogen-bonded and geometrical features},
   author={Kabsch, Wolfgang and Sander, Christian},
@@ -95,3 +96,4 @@ Although the above simplifications, the C3 type annotation still matches with th
   year={1983},
   publisher={Wiley Online Library}
 }
+```
