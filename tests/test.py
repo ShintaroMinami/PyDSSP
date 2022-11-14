@@ -29,7 +29,6 @@ listfile = testset_dir + 'list'
 with open(listfile, 'r') as f:
     targets = [l.rstrip() for l in f.readlines()]
 
-import time
 # pydssp calcuration with numpy
 print(f"correlation check with numpy")
 correlation_stack = []
