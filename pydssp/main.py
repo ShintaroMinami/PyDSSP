@@ -14,7 +14,7 @@ CONST_Q1Q2 = 0.084
 CONST_F = 332
 DEFAULT_CUTOFF = -0.5
 DEFAULT_MARGIN = 1.0
-C3_ALPHABET = ['-', 'H', 'E']
+C3_ALPHABET = np.array(['-', 'H', 'E'])
 
 
 def get_hbond_map(
@@ -47,5 +47,5 @@ def assign(
     if out_type == 'index':
         return index
     # output c3
-    c3 = np.array([C3_ALPHABET[i] for i in index])
+    c3 = C3_ALPHABET[index]
     return c3
