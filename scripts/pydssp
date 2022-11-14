@@ -6,7 +6,6 @@ dir_script = path.dirname(path.realpath(__file__))
 import sys
 sys.path.append(dir_script+'/../')
 import pydssp
-import pdbbasic as pdbb
 import tqdm
 
 C3_ALPHABET = ['-', 'H', 'E']
@@ -25,7 +24,7 @@ fh = open(args.output_file, 'w') if args.output_file is not None else sys.stdout
 
 for pdb in tqdm.tqdm(args.pdbs):
     # read pdb file
-    coord = torch.tensor(pdbb.readpdb(pdb, atoms=['N','CA','C','O']))
+    coord = torch.tensor(pydssp.read_pdbtext(open(pdb, 'r').read()))
     coord = coord.to(args.device)
     # main calculation
     dsspline = ''.join(pydssp.assign(coord))

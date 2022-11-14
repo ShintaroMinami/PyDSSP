@@ -1,5 +1,7 @@
 #! /usr/bin/env python
 
+from Bio.PDB import PDBParser
+parser = PDBParser()
 from os import path
 dir_script = path.dirname(path.realpath(__file__))
 import sys
@@ -8,7 +10,6 @@ import pydssp
 import tqdm
 import numpy as np
 import torch
-import pdbbasic as pdbb
 
 testset_dir = dir_script+'/testset/TS50/'
 
@@ -30,6 +31,7 @@ listfile = testset_dir + 'list'
 with open(listfile, 'r') as f:
     targets = [l.rstrip() for l in f.readlines()]
 
+import time
 # pydssp calcuration with numpy
 print(f"correlation check with numpy")
 correlation_stack = []
@@ -37,7 +39,7 @@ for target in tqdm.tqdm(targets):
     dsspfile = testset_dir + '/dssp/' + target + '.dssp'
     pdbfile = testset_dir + '/pdb/' + target + '.pdb'    
     reference_idx = read_dssp_reference(dsspfile)
-    coord = pdbb.readpdb(pdbfile, atoms=['N','CA','C','O'])
+    coord = pydssp.read_pdbtext(open(pdbfile, 'r').read())
     pydssp_idx = pydssp.assign(coord, out_type='index')
     correlation = (reference_idx == pydssp_idx).mean()
     correlation_stack.append(correlation)
@@ -54,7 +56,7 @@ for target in tqdm.tqdm(targets):
     dsspfile = testset_dir + '/dssp/' + target + '.dssp'
     pdbfile = testset_dir + '/pdb/' + target + '.pdb'    
     reference_idx = torch.Tensor(read_dssp_reference(dsspfile))
-    coord = torch.Tensor(pdbb.readpdb(pdbfile, atoms=['N','CA','C','O']))
+    coord = torch.Tensor(pydssp.read_pdbtext(open(pdbfile, 'r').read()))
     pydssp_idx = pydssp.assign(coord, out_type='index')
     correlation = (reference_idx == pydssp_idx).to(torch.float).mean()
     correlation_stack.append(correlation)
