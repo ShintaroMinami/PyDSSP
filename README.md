@@ -6,7 +6,7 @@ DSSP (Dictionary of Secondary Structure of Protein) is a popular algorithm for a
 Wolfgang Kabsch, and Christian Sander (1983)</a>] This repository is a python implementation of DSSP algorithm that simplifies some parts of the algorithm.
 
 # General Info
-- It's NOT a complete implementation of the original DSSP, as some parts have been simplified (some more details here). However, an average of over 97% of secondary structure determinations agree with the original.
+- It's NOT a complete implementation of the original DSSP, as some parts have been simplified (some more details [here](#differences-from-the-original-dssp)). However, an average of over 97% of secondary structure determinations agree with the original.
 - The algorithm used to identify hydrogen bonded residue pairs is exactly the same as the original DSSP algorithm, but is extended to output the hydrogen-bond-pair-matrix as continuous values in the range [0,1].
 - With the continuous variable extension above, the hydrogen-bond-pair-matrix is differentiable with torch.Tensor as input.
 
@@ -76,7 +76,7 @@ dssp = pydssp.assign(coord, out_type='onehot')
 ## dim-0: loop,  dim-1: alpha-helix,  dim-2: beta-strand
 ```
 
-## Differences from the original DSSP
+# Differences from the original DSSP
 This implementation was simplified from the original DSSP algorithm. The differences from the original DSSP are as follows
 - The implementation omitted β-bulge annotation, so β-bulge is determined as a loop instead of β-strand.
 - Parameters for adding hydrogen atoms are slightly different from the original DSSP, which may cause small differences in hydrogen bond annotation.
@@ -84,3 +84,14 @@ This implementation was simplified from the original DSSP algorithm. The differe
 
 Although the above simplifications, the C3 type annotation still matches with the original DSSP for more than 97% of residues on average.
 
+## Reference
+@article{kabsch1983dictionary,
+  title={Dictionary of protein secondary structure: pattern recognition of hydrogen-bonded and geometrical features},
+  author={Kabsch, Wolfgang and Sander, Christian},
+  journal={Biopolymers: Original Research on Biomolecules},
+  volume={22},
+  number={12},
+  pages={2577--2637},
+  year={1983},
+  publisher={Wiley Online Library}
+}
