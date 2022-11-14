@@ -7,6 +7,7 @@ sys.path.append(dir_script+'/../')
 import pydssp
 import tqdm
 import numpy as np
+import torch
 import pdbbasic as pdbb
 
 testset_dir = dir_script+'/testset/TS50/'
@@ -29,7 +30,8 @@ listfile = testset_dir + 'list'
 with open(listfile, 'r') as f:
     targets = [l.rstrip() for l in f.readlines()]
 
-# pydssp calcuration
+# pydssp calcuration with numpy
+print(f"correlation check with numpy")
 correlation_stack = []
 for target in tqdm.tqdm(targets):
     dsspfile = testset_dir + '/dssp/' + target + '.dssp'
@@ -43,4 +45,21 @@ for target in tqdm.tqdm(targets):
 # check correlation
 correlation_mean = np.array(correlation_stack).mean()
 assert correlation_mean >0.97, 'Low correlation in TS50 testset'
-print(f"correlation_mean = {correlation_mean:.5f} > 0.97")
+print(f"correlation_mean = {correlation_mean:.5f} > 0.97 @ NumPy")
+
+# pydssp calcuration with torch
+print(f"correlation check with torch")
+correlation_stack = []
+for target in tqdm.tqdm(targets):
+    dsspfile = testset_dir + '/dssp/' + target + '.dssp'
+    pdbfile = testset_dir + '/pdb/' + target + '.pdb'    
+    reference_idx = read_dssp_reference(dsspfile)
+    coord = torch.Tensor(pdbb.readpdb(pdbfile, atoms=['N','CA','C','O']))
+    pydssp_idx = pydssp.assign(coord, out_type='index')
+    correlation = (reference_idx == pydssp_idx).mean()
+    correlation_stack.append(correlation)
+
+# check correlation
+correlation_mean = np.array(correlation_stack).mean()
+assert correlation_mean >0.97, 'Low correlation in TS50 testset'
+print(f"correlation_mean = {correlation_mean:.5f} > 0.97 @ PyTorch")
