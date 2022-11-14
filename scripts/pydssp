@@ -28,7 +28,6 @@ for pdb in tqdm.tqdm(args.pdbs):
     coord = torch.tensor(pdbb.readpdb(pdb, atoms=['N','CA','C','O']))
     coord = coord.to(args.device)
     # main calculation
-    dssp = pydssp.assign(coord)
-    # convert C3 Alphabet
-    dsspline = ''.join(dssp)
+    dsspline = ''.join(pydssp.assign(coord))
+    # write file or STDOUT
     fh.write(f"{dsspline} {pdb}\n")

@@ -106,5 +106,3 @@ def assign(coord: np.ndarray) -> np.ndarray:
     onehot = np.stack([loop, helix, strand], axis=-1)
     onehot = rearrange(onehot, '1 ... -> ...') if len(org_shape)==3 else onehot
     return onehot
-
-

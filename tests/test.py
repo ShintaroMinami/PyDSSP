@@ -53,10 +53,10 @@ correlation_stack = []
 for target in tqdm.tqdm(targets):
     dsspfile = testset_dir + '/dssp/' + target + '.dssp'
     pdbfile = testset_dir + '/pdb/' + target + '.pdb'    
-    reference_idx = read_dssp_reference(dsspfile)
+    reference_idx = torch.Tensor(read_dssp_reference(dsspfile))
     coord = torch.Tensor(pdbb.readpdb(pdbfile, atoms=['N','CA','C','O']))
     pydssp_idx = pydssp.assign(coord, out_type='index')
-    correlation = (reference_idx == pydssp_idx).mean()
+    correlation = (reference_idx == pydssp_idx).to(torch.float).mean()
     correlation_stack.append(correlation)
 
 # check correlation

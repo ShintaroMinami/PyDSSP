@@ -10,10 +10,6 @@ from .pydssp_torch import (
     assign as assign_torch
 )
 
-CONST_Q1Q2 = 0.084
-CONST_F = 332
-DEFAULT_CUTOFF = -0.5
-DEFAULT_MARGIN = 1.0
 C3_ALPHABET = np.array(['-', 'H', 'E'])
 
 
@@ -36,16 +32,16 @@ def assign(
     assert out_type in ['onehot', 'index', 'c3'], "Output type must be 'onehot', 'index', or 'c3'"
     # main calcuration
     if type(coord) == torch.Tensor:
-        onehot = assign_torch(coord).cpu().numpy()
+        onehot = assign_torch(coord)
     elif type(coord) == np.ndarray:
         onehot = assign_numpy(coord)
     # output one-hot
     if out_type == 'onehot':
         return onehot
     # output index
-    index = np.argmax(onehot, axis=-1)
+    index = torch.argmax(onehot.to(torch.float), dim=-1) if type(onehot) == torch.Tensor else np.argmax(onehot, axis=-1)
     if out_type == 'index':
         return index
     # output c3
-    c3 = C3_ALPHABET[index]
+    c3 = C3_ALPHABET[index.cpu().numpy()] if type(index) == torch.Tensor else C3_ALPHABET[index]
     return c3
