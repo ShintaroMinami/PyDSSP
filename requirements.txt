@@ -1,0 +1,4 @@
+torch>=1.12.1
+numpy>=1.20.3
+einops>=0.4.1
+tqdm>=4.60
