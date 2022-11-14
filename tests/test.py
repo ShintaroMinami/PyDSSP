@@ -1,15 +1,13 @@
 #! /usr/bin/env python
 
-from Bio.PDB import PDBParser
-parser = PDBParser()
 from os import path
 dir_script = path.dirname(path.realpath(__file__))
 import sys
 sys.path.append(dir_script+'/../')
 import pydssp
-import tqdm
 import numpy as np
 import torch
+import tqdm
 
 testset_dir = dir_script+'/testset/TS50/'
 
