@@ -5,29 +5,42 @@ dir_script = path.dirname(path.realpath(__file__))
 import sys
 sys.path.append(dir_script+'/../')
 import pydssp
-import torch
 import tqdm
+import numpy as np
 import pdbbasic as pdbb
 
+testset_dir = dir_script+'/testset/TS50/'
 
+# function for reading DSSP file
+c3_convert = {' ':0, 'S':0, 'T':0, 'H':1, 'G':1, 'I':1, 'E':2, 'B':2}
+def read_dssp_reference(dsspfile):
+    with open(dsspfile, 'r') as f:
+        lines = [l.rstrip() for l in f.readlines()]
+        sw, orig = False, []
+        for l in lines:
+            if '!' in l: continue # skip chain-break
+            if sw == True: orig.append(l[16])
+            if l.startswith('  # '): sw = True
+    c3_index = np.array([c3_convert[c8] for c8 in orig])
+    return c3_index
 
-from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
-argparse = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
-argparse.add_argument('pdbs', nargs='+', type=str, help='Input PDB file')
-argparse.add_argument('--device', '-d', type=str, default=None, help='Device')
-argparse.add_argument('--output-file', '-o', type=str, default=None, help='Output file')
-args = argparse.parse_args()
+# TS50 targets
+listfile = testset_dir + 'list'
+with open(listfile, 'r') as f:
+    targets = [l.rstrip() for l in f.readlines()]
 
-if args.device == None:
-    args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+# pydssp calcuration
+correlation_stack = []
+for target in tqdm.tqdm(targets):
+    dsspfile = testset_dir + '/dssp/' + target + '.dssp'
+    pdbfile = testset_dir + '/pdb/' + target + '.pdb'    
+    reference_idx = read_dssp_reference(dsspfile)
+    coord = pdbb.readpdb(pdbfile, atoms=['N','CA','C','O'])
+    pydssp_idx = pydssp.assign(coord, out_type='index')
+    correlation = (reference_idx == pydssp_idx).mean()
+    correlation_stack.append(correlation)
 
-fh = open(args.output_file, 'w') if args.output_file is not None else sys.stdout
-
-for pdb in tqdm.tqdm(args.pdbs):
-    # read pdb file
-    coord = torch.Tensor(pdbb.readpdb(pdb, atoms=['N','CA','C','O']))
-    coord = coord.to(args.device)
-    # main calculation
-    dssp = pydssp.assign(coord)
-    # output
-    fh.write(f"{''.join(dssp)} {pdb}\n")
+# check correlation
+correlation_mean = np.array(correlation_stack).mean()
+assert correlation_mean >0.97, 'Low correlation in TS50 testset'
+print(f"correlation_mean = {correlation_mean:.5f} > 0.97")

@@ -24,7 +24,7 @@ setup(
     use_scm_version={'local_scheme': 'no-local-version'},
 
     setup_requires=['setuptools_scm'],
-    install_requires=['numpy', 'torch', 'einops', 'tqdm'],
+    install_requires=['numpy', 'torch', 'einops', 'tqdm', 'pdbbasic'],
  
     include_package_data=True,
     scripts=[
