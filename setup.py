@@ -1,7 +1,6 @@
 from setuptools import setup
 from codecs import open
 from os import path
-from setuptools_scm import get_version
 
 dir_path = path.abspath(path.dirname(__file__))
 
