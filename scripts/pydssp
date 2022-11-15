@@ -10,9 +10,9 @@ import tqdm
 
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 argparse = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
-argparse.add_argument('pdbs', nargs='+', type=str, help='Input PDB file')
-argparse.add_argument('--device', '-d', type=str, default='cpu', help='Device')
-argparse.add_argument('--output-file', '-o', type=str, default=None, help='Output file')
+argparse.add_argument('pdbs', nargs='+', type=str, help='input PDB file')
+argparse.add_argument('--device', '-d', type=str, choices=['cpu', 'cuda'], default='cpu', help='device')
+argparse.add_argument('--output-file', '-o', type=str, default=None, help='output file')
 args = argparse.parse_args()
 
 if args.device == 'cuda':
