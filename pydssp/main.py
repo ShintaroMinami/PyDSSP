@@ -1,4 +1,9 @@
-from typing import Union, Literal
+from typing import Union
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal # for Python3.6/3.7 users
+
 import torch
 import numpy as np
 from .pydssp_numpy import (
