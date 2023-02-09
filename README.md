@@ -56,11 +56,16 @@ hbond_matrix = pydssp.get_hbond_map(coord)
 print(hbond_matrix.shape) # should be (batch, length, length)
 ```
 - For hbond_matrix[b, i, j], index 'i' is for donner (N-H) and 'j' is for acceptor (C=O), respectively
-- The output matrix consists of constant values in the range [0,1], which is defined as follows.
+- The output matrix consists of continuous values in the range [0,1], which is defined as follows.
 
 $HbondMat(i,j) = (1+\sin((-0.5-E(i,j)-margin)/margin*\pi/2))/2$
 
 Here $E$ is the electrostatic energy defined by (Kabsch and Sander 1983) and $margin(=1.0)$ is introduced to control smoothness.
+
+If you'd like to get the same hbond assignment as DSSP, you can get it by setting the threshold as 0.5.
+``` python
+dssp_hbond_matrix = pydssp.get_hbond_map(coord) > 0.5
+```
 
 ### To get secondary structure assignment: ```pydssp.assign()```
 ``` python
