@@ -29,6 +29,7 @@ def _get_hydrogen_atom_position(coord: torch.Tensor) -> torch.Tensor:
 
 def get_hbond_map(
     coord: torch.Tensor,
+    donor_mask: torch.Tensor=None,
     cutoff: float=DEFAULT_CUTOFF,
     margin: float=DEFAULT_MARGIN,
     return_e: bool=False
@@ -55,20 +56,27 @@ def get_hbond_map(
     local_mask = ~torch.eye(l, dtype=bool)
     local_mask *= ~torch.diag(torch.ones(l-1, dtype=bool), diagonal=-1)
     local_mask *= ~torch.diag(torch.ones(l-2, dtype=bool), diagonal=-2)
+    # mask for donor H absence (Proline)
+    if donor_mask is None:
+        donor_mask = torch.ones(l, dtype=float)
+    else:
+        donor_mask = donor_mask.to(float) if torch.is_tensor(donor_mask) else torch.Tensor(donor_mask).to(float)
+    donor_mask = repeat(donor_mask, 'l1 -> l1 l2', l2=l)
     # hydrogen bond map (continuous value extension of original definition)
     hbond_map = torch.clamp(cutoff - margin - e, min=-margin, max=margin)
     hbond_map = (torch.sin(hbond_map/margin*torch.pi/2)+1.)/2
     hbond_map = hbond_map * repeat(local_mask.to(hbond_map.device), 'l1 l2 -> b l1 l2', b=b)
+    hbond_map = hbond_map * repeat(donor_mask.to(hbond_map.device), 'l1 l2 -> b l1 l2', b=b)
     # return h-bond map
     hbond_map = hbond_map.squeeze(0) if len(org_shape)==3 else hbond_map
     return hbond_map
 
 
-def assign(coord: torch.Tensor) -> torch.Tensor:
+def assign(coord: torch.Tensor, donor_mask: torch.Tensor=None) -> torch.Tensor:
     # check input
     coord, org_shape = _check_input(coord)
     # get hydrogen bond map
-    hbmap = get_hbond_map(coord)
+    hbmap = get_hbond_map(coord, donor_mask=donor_mask)
     hbmap = rearrange(hbmap, '... l1 l2 -> ... l2 l1') # convert into "i:C=O, j:N-H" form
     # identify turn 3, 4, 5
     turn3 = torch.diagonal(hbmap, dim1=-2, dim2=-1, offset=3) > 0.
