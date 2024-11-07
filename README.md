@@ -15,6 +15,10 @@ Wolfgang Kabsch, and Christian Sander (1983)</a>] This repository is a python im
 ``` bash
 pip install pydssp
 ```
+to install the latest version
+``` bash
+pip install git+https://github.com/ShintaroMinami/PyDSSP.git
+```
 ## install by git clone
 ``` bash
 git clone https://github.com/ShintaroMinami/PyDSSP.git
