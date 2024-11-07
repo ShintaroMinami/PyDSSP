@@ -35,9 +35,10 @@ def _get_hydrogen_atom_position(coord: np.ndarray) -> np.ndarray:
 
 def get_hbond_map(
     coord: np.ndarray,
+    donor_mask: np.ndarray=None,
     cutoff: float=DEFAULT_CUTOFF,
     margin: float=DEFAULT_MARGIN,
-    return_e: bool=False
+    return_e: bool=False,
     ) -> np.ndarray:
     # check input
     coord, org_shape = _check_input(coord)
@@ -61,20 +62,24 @@ def get_hbond_map(
     local_mask = ~np.eye(l, dtype=bool)
     local_mask *= ~np.diag(np.ones(l-1, dtype=bool), k=-1)
     local_mask *= ~np.diag(np.ones(l-2, dtype=bool), k=-2)
+    # mask for donor H absence (Proline)
+    donor_mask = np.array(donor_mask).astype(float) if donor_mask is not None else np.ones(l, dtype=float)
+    donor_mask = repeat(donor_mask, 'l1 -> l1 l2', l2=l)
     # hydrogen bond map (continuous value extension of original definition)
     hbond_map = np.clip(cutoff - margin - e, a_min=-margin, a_max=margin)
     hbond_map = (np.sin(hbond_map/margin*np.pi/2)+1.)/2
     hbond_map = hbond_map * repeat(local_mask, 'l1 l2 -> b l1 l2', b=b)
+    hbond_map = hbond_map * repeat(donor_mask, 'l1 l2 -> b l1 l2', b=b)
     # return h-bond map
     hbond_map = np.squeeze(hbond_map, axis=0) if len(org_shape)==3 else hbond_map
     return hbond_map
 
 
-def assign(coord: np.ndarray) -> np.ndarray:
+def assign(coord: np.ndarray, donor_mask: np.ndarray=None) -> np.ndarray:
     # check input
     coord, org_shape = _check_input(coord)
     # get hydrogen bond map
-    hbmap = get_hbond_map(coord)
+    hbmap = get_hbond_map(coord, donor_mask=donor_mask)
     hbmap = rearrange(hbmap, '... l1 l2 -> ... l2 l1') # convert into "i:C=O, j:N-H" form
     # identify turn 3, 4, 5
     turn3 = np.diagonal(hbmap, axis1=-2, axis2=-1, offset=3) > 0.

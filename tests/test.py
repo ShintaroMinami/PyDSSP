@@ -36,8 +36,9 @@ for target in tqdm.tqdm(targets):
     dsspfile = testset_dir + '/dssp/' + target + '.dssp'
     pdbfile = testset_dir + '/pdb/' + target + '.pdb'    
     reference_idx = read_dssp_reference(dsspfile)
-    coord = pydssp.read_pdbtext(open(pdbfile, 'r').read())
-    pydssp_idx = pydssp.assign(coord, out_type='index')
+    coord, sequence = pydssp.read_pdbtext(open(pdbfile, 'r').read(), return_sequence=True)
+    donor_mask = sequence != 'PRO'
+    pydssp_idx = pydssp.assign(coord, donor_mask=donor_mask, out_type='index')
     correlation = (reference_idx == pydssp_idx).mean()
     correlation_stack.append(correlation)
 
@@ -53,8 +54,9 @@ for target in tqdm.tqdm(targets):
     dsspfile = testset_dir + '/dssp/' + target + '.dssp'
     pdbfile = testset_dir + '/pdb/' + target + '.pdb'    
     reference_idx = torch.Tensor(read_dssp_reference(dsspfile))
-    coord = torch.Tensor(pydssp.read_pdbtext(open(pdbfile, 'r').read()))
-    pydssp_idx = pydssp.assign(coord, out_type='index')
+    coord, sequence = pydssp.read_pdbtext(open(pdbfile, 'r').read(), return_sequence=True)
+    coord, donor_mask = torch.Tensor(coord), sequence != 'PRO'
+    pydssp_idx = pydssp.assign(coord, donor_mask=donor_mask, out_type='index')
     correlation = (reference_idx == pydssp_idx).to(torch.float).mean()
     correlation_stack.append(correlation)
 
