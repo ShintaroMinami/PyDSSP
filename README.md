@@ -50,7 +50,7 @@ import pydssp
 # Sample coordinates
 batch, length, atoms, xyz = 10, 100, 4, 3
 ## atoms should be 4 (N, CA, C, O) or 5 (N, CA, C, O, H)
-coord = torch.randn([batch, length, atom, xyz]) # batch-dim is optional
+coord = torch.randn([batch, length, atoms, xyz]) # batch-dim is optional
 ```
 
 ### To get hydrogen-bond matrix: ```pydssp.get_hbond_map()```
