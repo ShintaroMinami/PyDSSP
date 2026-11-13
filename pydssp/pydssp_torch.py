@@ -7,6 +7,9 @@ CONST_Q1Q2 = 0.084
 CONST_F = 332
 DEFAULT_CUTOFF = -0.5
 DEFAULT_MARGIN = 1.0
+# Gaps longer than this are shortened to it internally. DSSP patterns look at most 5 residues ahead
+# (turn of 5), so any gap of 6 or more gives the same result.
+MAX_SEQ_GAP = 6
 
 
 def _check_input(coord):
@@ -14,6 +17,21 @@ def _check_input(coord):
     assert (len(org_shape)==3) or (len(org_shape)==4), "Shape of input tensor should be [batch, L, atom, xyz] or [L, atom, xyz]"
     coord = repeat(coord, '... -> b ...', b=1) if len(org_shape)==3 else coord
     return coord, org_shape
+
+
+def _get_seq_position(residue_index, l: int, device: torch.device) -> torch.Tensor:
+    """Convert residue_index ([L] or [B, L]) into increasing sequence positions ([1, L] or [B, L]).
+
+    e.g. residue_index [10, 11, 14, 1, 2] -> [0, 1, 4, 10, 11]
+    (a difference > 1 keeps the missing residues, a difference <= 0 is a chain break)
+    """
+    if residue_index is None:
+        return torch.arange(l, device=device)[None]
+    residue_index = torch.as_tensor(residue_index, device=device).long()
+    assert residue_index.shape[-1] == l, "Length of residue_index must match the number of residues"
+    step = torch.diff(residue_index.reshape(-1, l), dim=-1)
+    step = step.clamp(max=MAX_SEQ_GAP).masked_fill(step <= 0, MAX_SEQ_GAP)
+    return torch.nn.functional.pad(step.cumsum(-1), [1, 0])
 
 
 def _get_hydrogen_atom_position(coord: torch.Tensor) -> torch.Tensor:
@@ -32,7 +50,8 @@ def get_hbond_map(
     donor_mask: torch.Tensor=None,
     cutoff: float=DEFAULT_CUTOFF,
     margin: float=DEFAULT_MARGIN,
-    return_e: bool=False
+    return_e: bool=False,
+    residue_index: torch.Tensor=None,
     ) -> torch.Tensor:
     # check input
     coord, org_shape = _check_input(coord)
@@ -52,31 +71,43 @@ def get_hbond_map(
     # electrostatic interaction energy
     e = torch.nn.functional.pad(CONST_Q1Q2 * (1./d_on + 1./d_ch - 1./d_oh - 1./d_cn)*CONST_F, [0,1,1,0])
     if return_e: return e
-    # mask for local pairs (i,i), (i,i+1), (i,i+2)
-    local_mask = ~torch.eye(l, dtype=bool)
-    local_mask *= ~torch.diag(torch.ones(l-1, dtype=bool), diagonal=-1)
-    local_mask *= ~torch.diag(torch.ones(l-2, dtype=bool), diagonal=-2)
+    # mask for local pairs (i,i), (i,i+1), (i,i+2) in sequence space
+    pos = _get_seq_position(residue_index, l, coord.device)
+    sep = pos[:, :, None] - pos[:, None, :] # donor - acceptor
+    local_mask = (sep < 0) | (sep > 2)
     # mask for donor H absence (Proline)
     if donor_mask is None:
         donor_mask = torch.ones(l, dtype=float)
     else:
         donor_mask = donor_mask.to(float) if torch.is_tensor(donor_mask) else torch.Tensor(donor_mask).to(float)
-    donor_mask = repeat(donor_mask, 'l1 -> l1 l2', l2=l)
+    donor_mask = donor_mask.to(coord.device).reshape(-1, l)
+    # mask for donor H that cannot be estimated (preceding residue is missing)
+    if a == 4:
+        has_prev = torch.diff(pos, dim=-1) == 1
+        donor_mask = donor_mask * torch.cat([torch.ones_like(has_prev[:, :1]), has_prev], dim=-1)
     # hydrogen bond map (continuous value extension of original definition)
     hbond_map = torch.clamp(cutoff - margin - e, min=-margin, max=margin)
     hbond_map = (torch.sin(hbond_map/margin*torch.pi/2)+1.)/2
-    hbond_map = hbond_map * repeat(local_mask.to(hbond_map.device), 'l1 l2 -> b l1 l2', b=b)
-    hbond_map = hbond_map * repeat(donor_mask.to(hbond_map.device), 'l1 l2 -> b l1 l2', b=b)
+    hbond_map = hbond_map * local_mask
+    hbond_map = hbond_map * donor_mask[:, :, None]
     # return h-bond map
     hbond_map = hbond_map.squeeze(0) if len(org_shape)==3 else hbond_map
     return hbond_map
 
 
-def assign(coord: torch.Tensor, donor_mask: torch.Tensor=None) -> torch.Tensor:
+def assign(coord: torch.Tensor, donor_mask: torch.Tensor=None, residue_index: torch.Tensor=None) -> torch.Tensor:
     # check input
     coord, org_shape = _check_input(coord)
+    b, l = coord.shape[:2]
     # get hydrogen bond map
-    hbmap = get_hbond_map(coord, donor_mask=donor_mask)
+    hbmap = get_hbond_map(coord, donor_mask=donor_mask, residue_index=residue_index)
+    # place residues at their sequence positions so that no pattern is formed across gaps
+    if residue_index is not None:
+        pos = _get_seq_position(residue_index, l, coord.device)
+        lp = int(pos.max()) + 1
+        hbmap_seq = hbmap.new_zeros(b, lp, lp)
+        hbmap_seq[torch.arange(b, device=coord.device)[:, None, None], pos[:, :, None], pos[:, None, :]] = hbmap
+        hbmap = hbmap_seq
     hbmap = rearrange(hbmap, '... l1 l2 -> ... l2 l1') # convert into "i:C=O, j:N-H" form
     # identify turn 3, 4, 5
     turn3 = torch.diagonal(hbmap, dim1=-2, dim2=-1, offset=3) > 0.
@@ -106,5 +137,7 @@ def assign(coord: torch.Tensor, donor_mask: torch.Tensor=None) -> torch.Tensor:
     strand = ladder
     loop = (~helix * ~strand)
     onehot = torch.stack([loop, helix, strand], dim=-1)
+    if residue_index is not None:
+        onehot = onehot[torch.arange(b, device=coord.device)[:, None], pos] # back to input residues
     onehot = onehot.squeeze(0) if len(org_shape)==3 else onehot
     return onehot
