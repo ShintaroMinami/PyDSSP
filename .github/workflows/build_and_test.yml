@@ -14,25 +14,55 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checking out code from repository
-        uses: actions/checkout@v2
-
-      - name: Setting up Python 3.8
-        uses: actions/setup-python@v2
+        uses: actions/checkout@v4
         with:
-          python-version: 3.8
-      
+          fetch-depth: 0 # setuptools_scm needs tags to set the version
+
+      - name: Setting up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
+          python -m pip install --upgrade pip build pytest
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install -r requirements.txt
 
+      - name: Build sdist and wheel
+        run: python -m build
+
       - name: Install pydssp
-        run: python setup.py install
-      
+        run: pip install dist/*.whl
+
       - name: Test
         run: python tests/test.py
 
       - name: Unit tests
-        run: |
-          pip install pytest
-          pytest tests/
+        run: pytest tests/
+
+      - name: Upload distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  # Publish the tested distributions to PyPI on release (Trusted Publishing, no API token)
+  publish:
+    if: github.event_name == 'release'
+    needs: build_and_test
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/pydssp
+    permissions:
+      id-token: write
+    steps:
+      - name: Download distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
