@@ -85,6 +85,17 @@ dssp = pydssp.assign(coord, out_type='onehot')
 ## dim-0: loop,  dim-1: alpha-helix,  dim-2: beta-strand
 ```
 
+### Missing residues: ```residue_index```
+By default, consecutive entries in ```coord``` are treated as consecutive residues. If some residues are missing (e.g. unresolved in the structure), pass the sequence position of each residue (e.g. mmCIF ```label_seq_id```) as ```residue_index```, so that residues across a gap are not treated as neighbors.
+``` python
+residue_index = [1, 2, 3, 6, 7, ...] # residues 4 and 5 are missing
+dssp = pydssp.assign(coord, residue_index=residue_index)
+hbond_matrix = pydssp.get_hbond_map(coord, residue_index=residue_index)
+```
+- Residues whose indices differ by 1 are connected, a larger difference means missing residues, and a difference <= 0 means a chain break (e.g. chains concatenated with residue numbers restarting). For batched input, ```residue_index``` can be [batch, length].
+- When the H atom is not given (4 atoms), the residue right after a gap is not used as a hydrogen bond donor, because its H position is estimated from the preceding residue.
+- The ```pydssp``` command detects gaps automatically from residue numbers and peptide bond lengths (C-N > 2.5 Å) in the PDB file.
+
 # Differences from the original DSSP
 This implementation was simplified from the original DSSP algorithm. The differences from the original DSSP are as follows
 - The implementation omitted β-bulge annotation, so β-bulge is determined as a loop instead of β-strand.

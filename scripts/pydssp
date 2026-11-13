@@ -25,10 +25,10 @@ fh = open(args.output_file, 'w') if args.output_file is not None else sys.stdout
 
 for pdb in tqdm.tqdm(args.pdbs):
     # read pdb file
-    coord, sequence = pydssp.read_pdbtext(open(pdb, 'r').read(), return_sequence=True)
+    coord, sequence, residue_index = pydssp.read_pdbtext(open(pdb, 'r').read(), return_sequence=True, return_residue_index=True)
     coord = torch.Tensor(coord).to(args.device)
     donor_mask = sequence != 'PRO' if args.ignore_proline_donor else None
     # main calcuration
-    dsspline = ''.join(pydssp.assign(coord, donor_mask=donor_mask))
+    dsspline = ''.join(pydssp.assign(coord, donor_mask=donor_mask, residue_index=residue_index))
     # write file or STDOUT
     fh.write(f"{dsspline} {pdb}\n")
